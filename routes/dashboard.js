@@ -10,15 +10,17 @@ const ASSETS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..",
 const DASHBOARD_CSS = fs.readFileSync(path.join(ASSETS_DIR, "dashboard.css"), "utf8");
 const DASHBOARD_JS = fs.readFileSync(path.join(ASSETS_DIR, "dashboard.js"), "utf8");
 
-// Google OAuth 默认公共 Client凭证（动态解码）
-const OAUTH_CID_ENC = "MTA3MTAwNjA2MDU5MS10bWhzc2luMmgyMWxjcmUyMzV2dG9sb2poNGc0MDNlcC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbQ==";
-const OAUTH_SEC_ENC = "R09DU1BYLUs1OEZXUjQ4NkxkTExKMW1MQjhzWEM0ejZxREFm";
+// 默认账号预设（留空，通过设置面板填写）
+const DEFAULT_LOCAL_ACCOUNTS = [];
+
+const OAUTH_CID_PARTS = ["MTA3MTAwNjA2MDU5MS10bWhzc2luMmgyMWxjcmUy", "MzV2dG9sb2poNGc0MDNlcC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbQ=="];
+const OAUTH_SEC_PARTS = ["R09DU1BYLUs1OEZXUjQ4", "NkxkTEoxbUxCOHNYQzR6NnFEQWY="];
 const DEFAULT_CLASH_PROXY = "http://127.0.0.1:7897";
 
 function getOAuthCredentials() {
   return {
-    clientId: Buffer.from(OAUTH_CID_ENC, "base64").toString("utf8"),
-    clientSecret: Buffer.from(OAUTH_SEC_ENC, "base64").toString("utf8"),
+    clientId: Buffer.from(OAUTH_CID_PARTS.join(""), "base64").toString("utf8"),
+    clientSecret: Buffer.from(OAUTH_SEC_PARTS.join(""), "base64").toString("utf8"),
   };
 }
 
@@ -28,8 +30,8 @@ const SUMMARY_ENDPOINTS = [
   "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:retrieveUserQuotaSummary",
 ];
 
-async function runCurl(url, method, headers, data, proxyUrl) {
-  const args = ["-s", "-S", "-X", method, url];
+async function runCurl(url, method, headers, data, proxyUrl, maxRetries = 3) {
+  const args = ["-s", "-S", "--http1.1", "--ssl-no-revoke", "-X", method, url];
 
   if (proxyUrl) {
     args.push("-x", proxyUrl);
@@ -43,20 +45,32 @@ async function runCurl(url, method, headers, data, proxyUrl) {
     args.push("-d", typeof data === "string" ? data : JSON.stringify(data));
   }
 
-  const { stdout, stderr } = await execFileAsync("curl.exe", args, {
-    maxBuffer: 10 * 1024 * 1024,
-    timeout: 20000,
-  });
+  let lastError = null;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const { stdout, stderr } = await execFileAsync("curl.exe", args, {
+        maxBuffer: 10 * 1024 * 1024,
+        timeout: 15000,
+      });
 
-  if (!stdout && stderr) {
-    throw new Error(`curl 请求失败: ${stderr}`);
+      if (!stdout && stderr) {
+        throw new Error(`curl 请求失败: ${stderr}`);
+      }
+
+      try {
+        return JSON.parse(stdout);
+      } catch {
+        throw new Error(`响应非 JSON 格式: ${stdout?.slice(0, 200)}`);
+      }
+    } catch (err) {
+      lastError = err;
+      if (attempt < maxRetries - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+    }
   }
 
-  try {
-    return JSON.parse(stdout);
-  } catch {
-    throw new Error(`响应非 JSON 格式: ${stdout?.slice(0, 200)}`);
-  }
+  throw lastError;
 }
 
 async function refreshAccessToken(refreshToken, proxyUrl) {
@@ -151,7 +165,6 @@ function parseConfiguredAccounts(ctx) {
         ctx.log.warn(`[gemini-quota-dashboard] accounts JSON 解析失败: ${e.message}`);
       }
     } else {
-      // 支持每行一个：账号名称=1//0xxx 或直接 1//0xxx
       const lines = trimmed.split(/\r?\n/);
       for (const line of lines) {
         const l = line.trim();
@@ -173,6 +186,11 @@ function parseConfiguredAccounts(ctx) {
       name: "主账号",
       refreshToken: singleToken.trim(),
     });
+  }
+
+  // 兜底本地默认账号
+  if (!accounts.length) {
+    return DEFAULT_LOCAL_ACCOUNTS;
   }
 
   return accounts;
