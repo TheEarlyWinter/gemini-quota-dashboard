@@ -1,0 +1,10 @@
+{
+  "name": "gemini-quota-dashboard",
+  "version": "1.0.0",
+  "description": "专为 Google Gemini 模型打造的配额监控顶栏面板，实时展示 5 小时限额与周限额、剩余百分比及重置倒计时。",
+  "type": "module",
+  "main": "index.js",
+  "keywords": ["hana-plugin", "gemini", "quota", "dashboard"],
+  "author": "Antigravity",
+  "license": "MIT"
+}

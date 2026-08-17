@@ -1,0 +1,50 @@
+{
+  "manifestVersion": 1,
+  "id": "gemini-quota-dashboard",
+  "name": "Gemini 配额看板",
+  "version": "1.0.0",
+  "description": "监控 Google Gemini 模型的 5 小时滑动窗口与周总额度，实时掌握剩余用量与刷新倒计时。",
+  "trust": "full-access",
+  "minAppVersion": "0.441.32",
+  "entry": "index.js",
+  "activationEvents": ["onStartup"],
+  "contributes": {
+    "page": {
+      "title": {
+        "zh": "Gemini 配额",
+        "en": "Gemini Quota"
+      },
+      "icon": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6\"/><circle cx=\"12\" cy=\"12\" r=\"10\" stroke-dasharray=\"4 4\"/></svg>",
+      "route": "/gemini-quota"
+    },
+    "configuration": {
+      "title": "Gemini 配额看板设置",
+      "properties": {
+        "refreshToken": {
+          "type": "string",
+          "default": "",
+          "title": "Google OAuth Refresh Token",
+          "description": "用于自动获取并刷新 access_token 的 refresh_token（推荐填写）"
+        },
+        "accessToken": {
+          "type": "string",
+          "default": "",
+          "title": "Google OAuth Access Token (可选)",
+          "description": "直接填写的 Access Token（如果未填 Refresh Token 则使用此项）"
+        },
+        "proxyUrl": {
+          "type": "string",
+          "default": "",
+          "title": "HTTP 代理地址 (可选)",
+          "description": "例如 http://127.0.0.1:7890，如网络无需额外代理可留空"
+        },
+        "autoRefreshInterval": {
+          "type": "number",
+          "default": 3,
+          "title": "自动刷新频率（分钟）",
+          "description": "前端仪表盘自动查询最新额度状态的间隔"
+        }
+      }
+    }
+  }
+}
