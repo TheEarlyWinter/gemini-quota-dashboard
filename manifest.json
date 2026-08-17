@@ -20,6 +20,12 @@
     "configuration": {
       "title": "Gemini 配额看板设置",
       "properties": {
+        "accounts": {
+          "type": "string",
+          "default": "",
+          "title": "多账号配置 (JSON 或多行)",
+          "description": "支持多账号并列监控。格式支持 JSON 数组 [{\"name\":\"主号\",\"refreshToken\":\"...\"}] 或多行：主号=1//0xxx"
+        },
         "refreshToken": {
           "type": "string",
           "default": "",

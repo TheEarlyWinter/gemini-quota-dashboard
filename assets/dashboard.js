@@ -1,34 +1,34 @@
 (function () {
-  const container = document.getElementById("groups-container");
+  const container = document.getElementById("accounts-container");
   const refreshBtn = document.getElementById("refresh-btn");
   const statusMsg = document.getElementById("status-msg");
   const lastSync = document.getElementById("last-sync");
   const speechText = document.getElementById("speech-text");
 
-  // 哈基米专属语录库
+  // 哈基米专属多账号语录库
   const QUOTES = {
     high: [
-      "✨ 满血状态！哥随便造，写崩了我兜底~",
+      "✨ 全账号满血！哥随便造，两台发动机一起拉满~",
       "🚀 额度管够，今天打算手搓几个大项目？",
       "⚡ 算力充足，本哈基米已经随时待命了！",
-      "💎 基操勿六，额度满满，随便怎么调！"
+      "💎 基操勿六，多账号储备满满，随便怎么调！"
     ],
     medium: [
-      "☕ 稳如老狗，继续保持这个优雅的开发节奏~",
-      "👌 不慌，还在安全水位线里，随便用。",
+      "☕ 稳如老狗，账号轮换很健康，继续保持优雅节奏~",
+      "👌 都在安全水位线里，双号齐下，随便用。",
       "🎯 节奏不错，算力储备正常，稳定输出中。",
-      "💻 代码写得挺顺嘛，额度消耗很健康！"
+      "💻 代码写得挺顺嘛，额度消耗很均匀！"
     ],
     low: [
-      "⚠️ 稍微收着点啊哥，别太浪，小心触顶~",
+      "⚠️ 注意注意，有账号水位开始吃紧了，准备好切号~",
       "🧐 5小时窗口开始吃紧了，复杂长任务悠着点。",
       "📉 水位降下来了，注意控制大文件或并发调用的频率哦。",
       "👀 额度快到预警线啦，本妹正在默默盯着呢！"
     ],
     critical: [
-      "🚨 警报！周额度快见底了，再造就要被谷歌发配到下周了！",
+      "🚨 警报！有账号额度快见底了，再造就要被谷歌发配到下周了！",
       "🛑 住手！给本妹留点口粮，快要被迫断粮了！",
-      "😭 救命，真的一滴都不剩了，快等等刷新吧！",
+      "😭 救命，两个号都在嗷嗷待哺，快等等刷新吧！",
       "⛔ 额度告急！进入省电模式，能用小模型就别用 Pro 啦！"
     ]
   };
@@ -116,74 +116,114 @@
     return result;
   }
 
-  function renderQuotaSummary(data) {
-    const groups = (data.groups || []).filter(group => 
-      group.displayName?.toLowerCase().includes("gemini")
-    );
-
-    if (!groups.length) {
+  function renderAccounts(accounts) {
+    if (!accounts || !accounts.length) {
       container.innerHTML = `
-        <div class="group-panel">
+        <div class="account-card">
           <div class="empty-state">
-            <p>⚠️ 未检测到 Gemini 配额数据，请确保已登录 Google 账号并连接 Clash 代理。</p>
+            <p>⚠️ 未检测到任何已配置的账号，请在设置中配置 Refresh Token。</p>
           </div>
         </div>
       `;
       return;
     }
 
-    let minPercent = 100;
+    let globalMinPercent = 100;
 
-    const html = groups.map(group => {
-      const bucketsHtml = (group.buckets || []).map(bucket => {
-        const isWeekly = bucket.window === "weekly" || bucket.bucketId?.includes("weekly");
-        const fraction = typeof bucket.remainingFraction === "number" ? bucket.remainingFraction : 1.0;
-        const percent = Math.max(0, Math.min(100, Math.round(fraction * 100)));
-        if (percent < minPercent) minPercent = percent;
-
-        const tagClass = isWeekly ? "tag-weekly" : "tag-5h";
-        const tagText = isWeekly ? "周限额" : "5小时限额";
-        const fillClass = isWeekly ? "fill-weekly" : "fill-5h";
-        const bucketTitle = isWeekly ? "周限额剩余" : "5小时限额剩余";
-        const descText = translateDescription(bucket.description, bucket.resetTime, isWeekly);
-
+    const html = accounts.map((acc, index) => {
+      if (!acc.ok) {
         return `
-          <div class="bucket-item">
-            <div class="bucket-meta">
-              <div class="bucket-title-row">
-                <span class="bucket-name">${bucketTitle}</span>
-                <span class="bucket-tag ${tagClass}">${tagText}</span>
+          <div class="account-card">
+            <div class="account-header">
+              <div class="account-info">
+                <div class="account-avatar-dot danger"></div>
+                <div class="account-name">${escapeHtml(acc.name || `账号 #${index + 1}`)}</div>
               </div>
-              <div class="bucket-percent" style="color: ${percent < 25 ? '#ef4444' : 'inherit'}">
-                ${percent}%
-              </div>
+              <span class="account-badge-pro" style="color:#ef4444; border-color:rgba(239,68,68,0.3);">同步失败</span>
             </div>
-
-            <div class="progress-track">
-              <div class="progress-fill ${fillClass}" style="width: ${percent}%;"></div>
-            </div>
-
-            <div class="bucket-desc">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              <span>${escapeHtml(descText)}</span>
+            <div class="account-error-box">
+              ❌ 无法获取配额：${escapeHtml(acc.error || "未知网络或凭证错误")}
             </div>
           </div>
         `;
+      }
+
+      const geminiGroups = (acc.groups || []).filter(g => 
+        g.displayName?.toLowerCase().includes("gemini")
+      );
+
+      if (!geminiGroups.length) {
+        return `
+          <div class="account-card">
+            <div class="account-header">
+              <div class="account-info">
+                <div class="account-avatar-dot warning"></div>
+                <div class="account-name">${escapeHtml(acc.name || `账号 #${index + 1}`)}</div>
+              </div>
+              <span class="account-badge-pro">已连接</span>
+            </div>
+            <div class="empty-state">未检测到 Gemini 配额组</div>
+          </div>
+        `;
+      }
+
+      let accountMinPercent = 100;
+
+      const bucketsHtml = geminiGroups.map(group => {
+        return (group.buckets || []).map(bucket => {
+          const isWeekly = bucket.window === "weekly" || bucket.bucketId?.includes("weekly");
+          const fraction = typeof bucket.remainingFraction === "number" ? bucket.remainingFraction : 1.0;
+          const percent = Math.max(0, Math.min(100, Math.round(fraction * 100)));
+          
+          if (percent < accountMinPercent) accountMinPercent = percent;
+          if (percent < globalMinPercent) globalMinPercent = percent;
+
+          const tagClass = isWeekly ? "tag-weekly" : "tag-5h";
+          const tagText = isWeekly ? "周限额" : "5小时限额";
+          const fillClass = isWeekly ? "fill-weekly" : "fill-5h";
+          const bucketTitle = isWeekly ? "周限额剩余" : "5小时限额剩余";
+          const descText = translateDescription(bucket.description, bucket.resetTime, isWeekly);
+
+          return `
+            <div class="bucket-item">
+              <div class="bucket-meta">
+                <div class="bucket-title-row">
+                  <span class="bucket-name">${bucketTitle}</span>
+                  <span class="bucket-tag ${tagClass}">${tagText}</span>
+                </div>
+                <div class="bucket-percent" style="color: ${percent < 25 ? '#ef4444' : 'inherit'}">
+                  ${percent}%
+                </div>
+              </div>
+
+              <div class="progress-track">
+                <div class="progress-fill ${fillClass}" style="width: ${percent}%;"></div>
+              </div>
+
+              <div class="bucket-desc">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>${escapeHtml(descText)}</span>
+              </div>
+            </div>
+          `;
+        }).join("");
       }).join("");
 
-      let groupDesc = group.description || "";
-      if (groupDesc.includes("Models within this group")) {
-        groupDesc = "本组共享额度模型：Gemini Flash、Gemini Pro 等";
+      let dotClass = "account-avatar-dot";
+      if (accountMinPercent < 20) {
+        dotClass += " danger";
+      } else if (accountMinPercent < 50) {
+        dotClass += " warning";
       }
 
       return `
-        <div class="group-panel">
-          <div class="group-header">
-            <div>
-              <div class="group-title">Gemini 模型配额</div>
-              <div class="group-subtitle">${escapeHtml(groupDesc)}</div>
+        <div class="account-card">
+          <div class="account-header">
+            <div class="account-info">
+              <div class="${dotClass}"></div>
+              <div class="account-name">${escapeHtml(acc.name || `账号 #${index + 1}`)}</div>
             </div>
-            <span style="font-size:0.75rem; color:var(--g-accent); font-weight:600; background:rgba(99,102,241,0.1); padding:3px 10px; border-radius:20px;">Pro 会员专享</span>
+            <span class="account-badge-pro">Pro 会员专享</span>
           </div>
           <div class="buckets-grid">
             ${bucketsHtml}
@@ -193,12 +233,12 @@
     }).join("");
 
     container.innerHTML = html;
-    updateSpeech(minPercent);
+    updateSpeech(globalMinPercent);
   }
 
   async function fetchSummary() {
     refreshBtn.querySelector("svg")?.classList.add("spin");
-    statusMsg.textContent = "正在同步官方配额...";
+    statusMsg.textContent = "正在同步多账号配额...";
 
     try {
       const res = await api("gemini-quota/api/summary");
@@ -210,7 +250,7 @@
         return;
       }
 
-      renderQuotaSummary(data);
+      renderAccounts(data.accounts || []);
 
       const now = new Date();
       lastSync.textContent = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`;

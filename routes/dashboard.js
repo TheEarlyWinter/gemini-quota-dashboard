@@ -85,9 +85,9 @@ async function refreshAccessToken(refreshToken, proxyUrl) {
   return res.access_token;
 }
 
-async function fetchQuotaSummary(refreshToken, proxyUrl) {
+async function fetchSingleAccountQuota(refreshToken, proxyUrl) {
   if (!refreshToken?.trim()) {
-    throw new Error("未检测到 Google Refresh Token，请在设置中配置");
+    throw new Error("缺少有效的 Refresh Token");
   }
 
   const effectiveToken = await refreshAccessToken(refreshToken, proxyUrl);
@@ -118,16 +118,64 @@ async function fetchQuotaSummary(refreshToken, proxyUrl) {
     throw lastError || new Error("未能从 Google 接口获取到配额摘要");
   }
 
-  // 过滤掉 Claude 和 GPT 等第三方模型分组，只保留 Gemini
+  // 过滤掉非 Gemini 分组
   const filteredGroups = (summaryData.groups || []).filter((g) =>
     g.displayName?.toLowerCase().includes("gemini")
   );
 
-  return {
-    ok: true,
-    ...summaryData,
-    groups: filteredGroups,
-  };
+  return filteredGroups;
+}
+
+function parseConfiguredAccounts(ctx) {
+  const rawAccounts = ctx.config?.get("accounts");
+  const singleToken = ctx.config?.get("refreshToken");
+
+  const accounts = [];
+
+  if (rawAccounts && typeof rawAccounts === "string") {
+    const trimmed = rawAccounts.trim();
+    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          for (const item of parsed) {
+            if (item?.refreshToken) {
+              accounts.push({
+                name: item.name || "Google 账号",
+                refreshToken: item.refreshToken,
+              });
+            }
+          }
+        }
+      } catch (e) {
+        ctx.log.warn(`[gemini-quota-dashboard] accounts JSON 解析失败: ${e.message}`);
+      }
+    } else {
+      // 支持每行一个：账号名称=1//0xxx 或直接 1//0xxx
+      const lines = trimmed.split(/\r?\n/);
+      for (const line of lines) {
+        const l = line.trim();
+        if (!l || l.startsWith("#")) continue;
+        if (l.includes("=")) {
+          const [name, token] = l.split("=", 2);
+          if (token?.trim()) {
+            accounts.push({ name: name.trim(), refreshToken: token.trim() });
+          }
+        } else if (l.startsWith("1//0")) {
+          accounts.push({ name: `账号 #${accounts.length + 1}`, refreshToken: l });
+        }
+      }
+    }
+  }
+
+  if (!accounts.length && singleToken?.trim()) {
+    accounts.push({
+      name: "主账号",
+      refreshToken: singleToken.trim(),
+    });
+  }
+
+  return accounts;
 }
 
 function escapeHtml(value) {
@@ -167,8 +215,8 @@ function renderHtml(ctx, req) {
           </svg>
         </div>
         <div>
-          <h1>Gemini 模型配额总览</h1>
-          <p>实时监控 5 小时滑动窗口与周限额</p>
+          <h1>Gemini 模型多账号配额总览</h1>
+          <p>实时监控各账号 5 小时滑动窗口与周限额</p>
         </div>
       </div>
       <div class="header-actions">
@@ -186,12 +234,12 @@ function renderHtml(ctx, req) {
     <!-- 哈基米语录气泡 -->
     <div class="sister-speech-card">
       <div class="speech-avatar">🤖</div>
-      <div id="speech-text" class="speech-content">正在同步实时状态...</div>
+      <div id="speech-text" class="speech-content">正在同步多账号实时状态...</div>
     </div>
 
-    <!-- 配额组容器 -->
-    <div id="groups-container" style="display: flex; flex-direction: column; gap: 20px;">
-      <div class="group-panel">
+    <!-- 多账号卡片容器 -->
+    <div id="accounts-container" class="accounts-container">
+      <div class="account-card">
         <div class="empty-state">
           <p>正在同步 Google 官方配额数据...</p>
         </div>
@@ -202,7 +250,7 @@ function renderHtml(ctx, req) {
     <div class="info-box">
       <svg class="info-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
       <div>
-        <strong>配额计算规则：</strong> 所有 Gemini 模型（Gemini Flash、Gemini Pro 等）共享周限额与 5 小时限额。限额根据消耗的 Token 成本成比例扣减。5 小时限额用于平滑并发峰值，周限额则直接绑定于你的 Pro 订阅周期。
+        <strong>多账号调度与配额规则：</strong> 各 Google 账号独立计算周限额与 5 小时滑动窗口。通过多账号轮换可大幅提升总可用吞吐量，建议在任一账号 5 小时窗口吃紧时自动切换至备用账号。
       </div>
     </div>
 
@@ -216,19 +264,61 @@ export default function registerDashboardRoutes(app, ctx) {
   // 1. 页面 HTML
   app.get("/gemini-quota", (c) => c.html(renderHtml(ctx, c.req)));
 
-  // 2. 聚合配额 API
+  // 2. 多账号聚合配额 API
   app.get("/gemini-quota/api/summary", async (c) => {
-    const refreshToken = ctx.config?.get("refreshToken") || "";
     const proxyUrl = ctx.config?.get("proxyUrl") || DEFAULT_CLASH_PROXY;
+    const accounts = parseConfiguredAccounts(ctx);
+
+    if (!accounts.length) {
+      return c.json({
+        ok: false,
+        error: "未配置任何 Google 账号，请在插件设置中配置 accounts 或 refreshToken",
+        accounts: [],
+      });
+    }
 
     try {
-      const data = await fetchQuotaSummary(refreshToken, proxyUrl);
-      return c.json(data);
+      const results = await Promise.allSettled(
+        accounts.map(async (acc) => {
+          try {
+            const groups = await fetchSingleAccountQuota(acc.refreshToken, proxyUrl);
+            return {
+              name: acc.name,
+              ok: true,
+              groups,
+              error: null,
+            };
+          } catch (err) {
+            return {
+              name: acc.name,
+              ok: false,
+              groups: [],
+              error: err.message,
+            };
+          }
+        })
+      );
+
+      const accountsData = results.map((r, idx) => {
+        if (r.status === "fulfilled") return r.value;
+        return {
+          name: accounts[idx].name,
+          ok: false,
+          groups: [],
+          error: r.reason?.message || "请求失败",
+        };
+      });
+
+      return c.json({
+        ok: true,
+        accounts: accountsData,
+      });
     } catch (err) {
       ctx.log.error(`[gemini-quota-dashboard] 配额获取失败: ${err.message}`);
       return c.json({
         ok: false,
         error: err.message,
+        accounts: [],
       });
     }
   });

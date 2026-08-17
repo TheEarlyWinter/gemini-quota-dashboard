@@ -1,7 +1,7 @@
 :root {
   --g-bg: var(--bg-main, #f8fafc);
-  --g-card-bg: var(--bg-card, rgba(255, 255, 255, 0.85));
-  --g-card-border: var(--border-color, rgba(226, 232, 240, 0.8));
+  --g-card-bg: var(--bg-card, rgba(255, 255, 255, 0.88));
+  --g-card-border: var(--border-color, rgba(226, 232, 240, 0.85));
   --g-text-primary: var(--text-primary, #0f172a);
   --g-text-secondary: var(--text-secondary, #64748b);
   --g-accent: #6366f1;
@@ -10,12 +10,13 @@
   --g-blue: #2563eb;
   --g-purple: #7c3aed;
   --g-radius: 16px;
+  --g-inner-radius: 12px;
 }
 
 [data-hana-theme="dark"] {
   --g-bg: var(--bg-main, #0f172a);
-  --g-card-bg: var(--bg-card, rgba(30, 41, 59, 0.7));
-  --g-card-border: var(--border-color, rgba(51, 65, 85, 0.6));
+  --g-card-bg: var(--bg-card, rgba(30, 41, 59, 0.72));
+  --g-card-border: var(--border-color, rgba(51, 65, 85, 0.65));
   --g-text-primary: var(--text-primary, #f8fafc);
   --g-text-secondary: var(--text-secondary, #94a3b8);
   --g-speech-bg: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%);
@@ -31,17 +32,17 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   background: var(--g-bg);
   color: var(--g-text-primary);
-  padding: 32px 24px;
+  padding: 28px 20px;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
 }
 
 .dashboard-container {
-  max-width: 820px;
+  max-width: 860px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
 }
 
 /* 顶部标题栏 */
@@ -49,12 +50,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 24px;
+  padding: 18px 22px;
   background: var(--g-card-bg);
   border: 1px solid var(--g-card-border);
   border-radius: var(--g-radius);
   backdrop-filter: blur(12px);
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.03);
 }
 
 .header-title-group {
@@ -73,16 +74,18 @@ body {
   justify-content: center;
   color: #fff;
   box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+  flex-shrink: 0;
 }
 
 .header-title-group h1 {
-  font-size: 1.3rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: var(--g-text-primary);
+  letter-spacing: -0.01em;
 }
 
 .header-title-group p {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: var(--g-text-secondary);
   margin-top: 2px;
 }
@@ -97,9 +100,9 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 9px 16px;
+  padding: 8px 15px;
   border-radius: 9px;
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -115,27 +118,26 @@ body {
   transform: translateY(-1px);
 }
 
-/* 俏皮话卡片 */
+/* 哈基米专属语录卡片 */
 .sister-speech-card {
   background: var(--g-speech-bg);
   border: 1px solid rgba(99, 102, 241, 0.2);
   border-radius: var(--g-radius);
-  padding: 14px 20px;
+  padding: 13px 18px;
   display: flex;
   align-items: center;
   gap: 12px;
   backdrop-filter: blur(8px);
-  animation: fadeIn 0.4s ease;
+  animation: fadeIn 0.35s ease;
 }
 
 .speech-avatar {
-  font-size: 1.3rem;
+  font-size: 1.25rem;
   line-height: 1;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
 }
 
 .speech-content {
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 500;
   color: var(--g-text-primary);
   flex: 1;
@@ -146,49 +148,91 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* 主卡片面板 */
-.group-panel {
+/* 账号列表容器 */
+.accounts-container {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* 单个账号卡片 */
+.account-card {
   background: var(--g-card-bg);
   border: 1px solid var(--g-card-border);
   border-radius: var(--g-radius);
   backdrop-filter: blur(12px);
-  padding: 24px;
+  padding: 22px;
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 18px;
   box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.03);
+  transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
-.group-header {
-  border-bottom: 1px solid var(--g-card-border);
-  padding-bottom: 14px;
+.account-card:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+.account-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: center;
+  border-bottom: 1px solid var(--g-card-border);
+  padding-bottom: 14px;
 }
 
-.group-title {
-  font-size: 1.15rem;
+.account-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.account-avatar-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+
+.account-avatar-dot.warning {
+  background: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+}
+
+.account-avatar-dot.danger {
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+}
+
+.account-name {
+  font-size: 1.1rem;
   font-weight: 700;
   color: var(--g-text-primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
-.group-subtitle {
-  font-size: 0.82rem;
-  color: var(--g-text-secondary);
-  margin-top: 4px;
+.account-badge-pro {
+  font-size: 0.72rem;
+  color: var(--g-accent);
+  font-weight: 600;
+  background: rgba(99, 102, 241, 0.1);
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(99, 102, 241, 0.2);
 }
 
+/* 进度桶网格 */
 .buckets-grid {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 18px;
 }
 
 .bucket-item {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .bucket-meta {
@@ -204,50 +248,49 @@ body {
 }
 
 .bucket-name {
-  font-size: 0.98rem;
+  font-size: 0.92rem;
   font-weight: 600;
   color: var(--g-text-primary);
 }
 
 .bucket-tag {
   display: inline-block;
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-size: 0.72rem;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 0.7rem;
   font-weight: 600;
 }
 
 .tag-weekly {
   background: rgba(124, 58, 237, 0.12);
   color: var(--g-purple);
-  border: 1px solid rgba(124, 58, 237, 0.25);
+  border: 1px solid rgba(124, 58, 237, 0.22);
 }
 
 .tag-5h {
   background: rgba(37, 99, 235, 0.12);
   color: var(--g-blue);
-  border: 1px solid rgba(37, 99, 235, 0.25);
+  border: 1px solid rgba(37, 99, 235, 0.22);
 }
 
 .bucket-percent {
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   font-weight: 700;
 }
 
 /* 进度条 */
 .progress-track {
   width: 100%;
-  height: 12px;
+  height: 10px;
   background: rgba(148, 163, 184, 0.2);
   border-radius: 999px;
   overflow: hidden;
-  position: relative;
 }
 
 .progress-fill {
   height: 100%;
   border-radius: 999px;
-  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .fill-weekly {
@@ -259,7 +302,7 @@ body {
 }
 
 .bucket-desc {
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   color: var(--g-text-secondary);
   line-height: 1.4;
   display: flex;
@@ -267,12 +310,28 @@ body {
   gap: 6px;
 }
 
-/* 底部说明卡片 */
+/* 错误与空状态 */
+.account-error-box {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--g-inner-radius);
+  padding: 14px 16px;
+  color: #ef4444;
+  font-size: 0.85rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 36px 20px;
+  color: var(--g-text-secondary);
+}
+
+/* 底部说明 */
 .info-box {
   background: rgba(99, 102, 241, 0.05);
   border: 1px solid rgba(99, 102, 241, 0.15);
   border-radius: var(--g-radius);
-  padding: 16px 20px;
+  padding: 14px 18px;
   font-size: 0.82rem;
   line-height: 1.6;
   color: var(--g-text-secondary);
@@ -287,17 +346,10 @@ body {
   flex-shrink: 0;
 }
 
-/* 旋转动画 */
 .spin {
   animation: spin 1s linear infinite;
 }
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
-}
-
-.empty-state {
-  text-align: center;
-  padding: 40px 20px;
-  color: var(--g-text-secondary);
 }
