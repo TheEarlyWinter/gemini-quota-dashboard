@@ -10,9 +10,6 @@ const ASSETS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..",
 const DASHBOARD_CSS = fs.readFileSync(path.join(ASSETS_DIR, "dashboard.css"), "utf8");
 const DASHBOARD_JS = fs.readFileSync(path.join(ASSETS_DIR, "dashboard.js"), "utf8");
 
-// 默认账号预设（留空，通过设置面板填写）
-const DEFAULT_LOCAL_ACCOUNTS = [];
-
 const OAUTH_CID_PARTS = ["MTA3MTAwNjA2MDU5MS10bWhzc2luMmgyMWxjcmUy", "MzV2dG9sb2poNGc0MDNlcC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbQ=="];
 const OAUTH_SEC_PARTS = ["R09DU1BYLUs1OEZXUjQ4", "NkxkTEoxbUxCOHNYQzR6NnFEQWY="];
 const DEFAULT_CLASH_PROXY = "http://127.0.0.1:7897";
@@ -188,9 +185,24 @@ function parseConfiguredAccounts(ctx) {
     });
   }
 
-  // 兜底本地默认账号
+  // 若未在设置面板配置，尝试读取本地 local-accounts.json（开发/本地测试用，不提交到 git）
   if (!accounts.length) {
-    return DEFAULT_LOCAL_ACCOUNTS;
+    const localCandidates = [
+      path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "local-accounts.json"),
+      path.join(process.cwd(), "local-accounts.json"),
+    ];
+    for (const candidate of localCandidates) {
+      if (fs.existsSync(candidate)) {
+        try {
+          const parsed = JSON.parse(fs.readFileSync(candidate, "utf8"));
+          if (Array.isArray(parsed) && parsed.length) {
+            return parsed;
+          }
+        } catch (e) {
+          ctx.log.warn(`[gemini-quota-dashboard] local-accounts.json 读取失败: ${e.message}`);
+        }
+      }
+    }
   }
 
   return accounts;
