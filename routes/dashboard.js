@@ -166,10 +166,12 @@ function parseConfiguredAccounts(ctx) {
       for (const line of lines) {
         const l = line.trim();
         if (!l || l.startsWith("#")) continue;
-        if (l.includes("=")) {
-          const [name, token] = l.split("=", 2);
-          if (token?.trim()) {
-            accounts.push({ name: name.trim(), refreshToken: token.trim() });
+        const eqIdx = l.indexOf("=");
+        if (eqIdx !== -1) {
+          const name = l.slice(0, eqIdx).trim();
+          const token = l.slice(eqIdx + 1).trim();
+          if (token) {
+            accounts.push({ name: name || "Google 账号", refreshToken: token });
           }
         } else if (l.startsWith("1//0")) {
           accounts.push({ name: `账号 #${accounts.length + 1}`, refreshToken: l });

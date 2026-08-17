@@ -65,6 +65,7 @@
   function formatTime(isoStr) {
     if (!isoStr) return "";
     const date = new Date(isoStr);
+    if (isNaN(date.getTime())) return "";
     return date.toLocaleString("zh-CN", {
       month: "numeric",
       day: "numeric",
@@ -76,7 +77,9 @@
 
   function getRelativeTime(resetTime) {
     if (!resetTime) return "";
-    const diffMs = new Date(resetTime).getTime() - Date.now();
+    const time = new Date(resetTime).getTime();
+    if (isNaN(time)) return "";
+    const diffMs = time - Date.now();
     if (diffMs <= 0) return "即将重置";
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMins / 60);
@@ -103,6 +106,7 @@
       text = text.replace(/hours?/gi, "小时");
       text = text.replace(/minutes?/gi, "分钟");
       text = text.replace(/seconds?/gi, "秒");
+      text = text.replace(/,\s*/g, " ");
       text = text.replace(/\./g, "");
       result = text.trim() + " 后完全重置";
     } else {
@@ -111,7 +115,9 @@
 
     if (resetTime) {
       const rel = getRelativeTime(resetTime);
-      result += `（重置时间：${formatTime(resetTime)} · ${rel}）`;
+      if (rel) {
+        result += `（重置时间：${formatTime(resetTime)} · ${rel}）`;
+      }
     }
     return result;
   }
