@@ -51,14 +51,14 @@ git clone https://github.com/TheEarlyWinter/gemini-quota-dashboard.git ~/.hanako
 在 **`accounts`** 字段中填写：
 1. **多行格式（简洁直观）**：
    ```text
-   主账号=1//06SZvy...
-   备用账号=1//0gclY4...
+   主账号=1//0example_refresh_token_1
+   备用账号=1//0example_refresh_token_2
    ```
 2. **JSON 格式**：
    ```json
    [
-     { "name": "账号1", "refreshToken": "1//06SZvy..." },
-     { "name": "账号2", "refreshToken": "1//0gclY4..." }
+     { "name": "账号1", "refreshToken": "1//0example_refresh_token_1" },
+     { "name": "账号2", "refreshToken": "1//0example_refresh_token_2" }
    ]
    ```
 
